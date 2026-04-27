@@ -38,28 +38,33 @@ jobs:
         python -m pip install --upgrade pip
         pip install buildozer cython kivy
     
-    - name: Initialize Buildozer
-      run: buildozer init
-    
-    - name: Force Configure Buildozer
+    - name: Initialize and Configure Buildozer
       run: |
-        # Принудительно меняем настройки, даже если строка закомментирована
-        sed -i 's/#\?android.api = .*/android.api = 30/' buildozer.spec
-        sed -i 's/#\?android.minapi = .*/android.minapi = 21/' buildozer.spec
-        sed -i 's/#\?android.ndk = .*/android.ndk = 25b/' buildozer.spec
+        # 1. Создаем файл конфигурации
+        buildozer init
         
-        # Проверяем, что получилось
-        cat buildozer.spec | grep -E "android.api|android.minapi|android.ndk"
-    
+        # 2. Жестко прописываем настройки, чтобы избежать ошибки Aidl
+        # Меняем API на 30
+        sed -i 's/#\?android.api = .*/android.api = 30/' buildozer.spec
+        # Меняем минимальный API на 21
+        sed -i 's/#\?android.minapi = .*/android.minapi = 21/' buildozer.spec
+        # ВАЖНО: Явно указываем версию NDK, это часто решает проблему с Aidl
+        sed -i 's/#\?android.ndk = .*/android.ndk = 25b/' buildozer.spec
+        # Принимаем лицензии автоматически
+        sed -i 's/#\?android.accept_sdk_license.*/android.accept_sdk_license = True/' buildozer.spec
+        
+        echo "Settings applied. Current config:"
+        cat buildozer.spec | grep -E "android.api|android.ndk|android.minapi"
+
     - name: Build APK
       run: |
         # Запускаем сборку
         buildozer -v android debug
-      continue-on-error: false # Останавливаем сборку при первой же ошибке, чтобы не ждать зря
+      continue-on-error: false 
     
     - name: Upload APK
       uses: actions/upload-artifact@v4
-      if: success() # Загружаем только если сборка прошла успешно
+      if: success()
       with:
         name: shift-calendar-apk
         path: bin/*.apk
