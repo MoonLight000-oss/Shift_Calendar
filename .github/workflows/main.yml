@@ -14,20 +14,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Initialize and Configure Buildozer
-        run: |
-          if [ ! -f buildozer.spec ]; then
-            buildozer init
-          fi
-
-          sed -i 's/^#\?android.api = .*/android.api = 30/' buildozer.spec
-          sed -i 's/^#\?android.minapi = .*/android.minapi = 21/' buildozer.spec
-          sed -i 's/^#\?android.ndk = .*/android.ndk = 25b/' buildozer.spec
-          sed -i 's/^#\?android.accept_sdk_license = .*/android.accept_sdk_license = True/' buildozer.spec
-
       - name: Build APK
         run: |
-          yes y | buildozer -v android debug
+          yes | buildozer -v android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
