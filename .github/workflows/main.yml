@@ -9,39 +9,36 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container: kivy/buildozer:latest
-    # 👇 ВОТ ЭТО РЕШАЕТ ПРОБЛЕМУ С ROOT
-    env:
-      BUILDOZER_ALLOW_ROOT: 1
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Initialize and Configure Buildozer
-      run: |
-        # Если файла нет, создаем его
-        if [ ! -f buildozer.spec ]; then
-          buildozer init
-        fi
-        
-        # Настраиваем правильные версии
-        sed -i 's/#\?android.api = .*/android.api = 30/' buildozer.spec
-        sed -i 's/#\?android.minapi = .*/android.minapi = 21/' buildozer.spec
-        sed -i 's/#\?android.ndk = .*/android.ndk = 25b/' buildozer.spec
-        sed -i 's/#\?android.accept_sdk_license.*/android.accept_sdk_license = True/' buildozer.spec
-        
-        echo "Настройки применены:"
-        cat buildozer.spec | grep -E "android.api|android.ndk|android.minapi"
 
-    - name: Build APK
-      run: |
-        buildozer -v android debug
-      continue-on-error: false
-    
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      if: success()
-      with:
-        name: shift-calendar-apk
-        path: bin/*.apk
-        if-no-files-found: error
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize and Configure Buildozer
+        run: |
+          export BUILDOZER_ALLOW_ROOT=1
+
+          if [ ! -f buildozer.spec ]; then
+            buildozer init
+          fi
+
+          sed -i 's/^#\?android.api = .*/android.api = 30/' buildozer.spec
+          sed -i 's/^#\?android.minapi = .*/android.minapi = 21/' buildozer.spec
+          sed -i 's/^#\?android.ndk = .*/android.ndk = 25b/' buildozer.spec
+          sed -i 's/^#\?android.accept_sdk_license = .*/android.accept_sdk_license = True/' buildozer.spec
+
+          echo "Настройки применены:"
+          grep -E "android.api|android.ndk|android.minapi|android.accept_sdk_license" buildozer.spec
+
+      - name: Build APK
+        run: |
+          export BUILDOZER_ALLOW_ROOT=1
+          yes | buildozer -v android debug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: shift-calendar-apk
+          path: bin/*.apk
+          if-no-files-found: error
