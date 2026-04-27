@@ -41,26 +41,26 @@ jobs:
     - name: Initialize Buildozer
       run: buildozer init
     
-    - name: Configure Buildozer
+    - name: Force Configure Buildozer
       run: |
-        sed -i 's/#android.api = 31/android.api = 30/' buildozer.spec
-        sed -i 's/#android.minapi = 21/android.minapi = 21/' buildozer.spec
+        # Принудительно меняем настройки, даже если строка закомментирована
+        sed -i 's/#\?android.api = .*/android.api = 30/' buildozer.spec
+        sed -i 's/#\?android.minapi = .*/android.minapi = 21/' buildozer.spec
+        sed -i 's/#\?android.ndk = .*/android.ndk = 25b/' buildozer.spec
+        
+        # Проверяем, что получилось
+        cat buildozer.spec | grep -E "android.api|android.minapi|android.ndk"
     
     - name: Build APK
       run: |
-        timeout 5400 buildozer -v android debug
-      continue-on-error: true
+        # Запускаем сборку
+        buildozer -v android debug
+      continue-on-error: false # Останавливаем сборку при первой же ошибке, чтобы не ждать зря
     
     - name: Upload APK
       uses: actions/upload-artifact@v4
+      if: success() # Загружаем только если сборка прошла успешно
       with:
         name: shift-calendar-apk
         path: bin/*.apk
-        if-no-files-found: warn
-    
-    - name: Upload build log
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: build-log
-        path: .buildozer/android/platform/build-*/dists/*/build.log
+        if-no-files-found: error
