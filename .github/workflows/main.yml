@@ -14,6 +14,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Show files
+        run: |
+          pwd
+          ls -la
+
       - name: Build APK
         run: |
           yes | buildozer -v android debug
