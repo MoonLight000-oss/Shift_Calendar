@@ -9,35 +9,32 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container: kivy/buildozer:latest
+    # 👇 ВОТ ЭТО РЕШАЕТ ПРОБЛЕМУ С ROOT
+    env:
+      BUILDOZER_ALLOW_ROOT: 1
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Install dependencies
+    - name: Initialize and Configure Buildozer
       run: |
-        sudo apt-get update
-        sudo apt-get install -y git zip unzip
-    
-    - name: Initialize Buildozer
-      run: |
-        buildozer init
+        # Если файла нет, создаем его
+        if [ ! -f buildozer.spec ]; then
+          buildozer init
+        fi
         
-    - name: Configure Buildozer
-      run: |
-        # Настраиваем buildozer.spec
+        # Настраиваем правильные версии
         sed -i 's/#\?android.api = .*/android.api = 30/' buildozer.spec
         sed -i 's/#\?android.minapi = .*/android.minapi = 21/' buildozer.spec
         sed -i 's/#\?android.ndk = .*/android.ndk = 25b/' buildozer.spec
         sed -i 's/#\?android.accept_sdk_license.*/android.accept_sdk_license = True/' buildozer.spec
         
-        echo "Config:"
+        echo "Настройки применены:"
         cat buildozer.spec | grep -E "android.api|android.ndk|android.minapi"
-    
+
     - name: Build APK
       run: |
-        # Создаем папку для .buildozer чтобы сохранить кэш
-        mkdir -p .buildozer
         buildozer -v android debug
       continue-on-error: false
     
