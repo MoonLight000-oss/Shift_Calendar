@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     container: kivy/buildozer:latest
     
-    # Разрешаем работу от имени root (нужно для Docker-образа)
+    # 👇 Разрешаем запуск от root на уровне всего job
     env:
       BUILDOZER_ALLOW_ROOT: "1"
 
@@ -18,41 +18,38 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 🛠 ШАГ 1: Инициализация и настройка buildozer.spec
-      - name: Init & Configure Buildozer
+      - name: Init & Build
         run: |
-          # Принудительно переходим в папку с вашим кодом
           cd $GITHUB_WORKSPACE
           
-          echo "📂 Текущая папка: $(pwd)"
-          echo "📄 Файлы в папке:"
+          # 👇 Жёстко экспортируем переменную для текущего шелла
+          export BUILDOZER_ALLOW_ROOT=1
+          
+          echo "📂 Файлы в папке:"
           ls -la
           
-          # Создаём файл, если его нет в репозитории
+          # Если нет buildozer.spec — создаём
           if [ ! -f buildozer.spec ]; then
-            echo "🔧 Файл buildozer.spec не найден, создаю..."
+            echo "🔧 Создаю buildozer.spec..."
             buildozer init
           fi
           
-          # 🔑 Настраиваем критически важные параметры
+          # 🔑 Настраиваем критические параметры
           sed -i 's/^#\?android.api = .*/android.api = 30/' buildozer.spec
           sed -i 's/^#\?android.minapi = .*/android.minapi = 21/' buildozer.spec
           sed -i 's/^#\?android.ndk = .*/android.ndk = 25b/' buildozer.spec
           sed -i 's/^#\?requirements = .*/requirements = python3,kivy/' buildozer.spec
           sed -i 's/^#\?android.accept_sdk_license.*/android.accept_sdk_license = True/' buildozer.spec
           
-          echo "✅ Настройки применены:"
+          echo "✅ Готовые настройки:"
           grep -E "title|android.api|android.minapi|android.ndk|requirements|accept" buildozer.spec
-
-      # 🏗 ШАГ 2: Сборка
-      - name: Build APK
-        run: |
-          cd $GITHUB_WORKSPACE
-          # yes | автоматически отвечает "да" на запрос лицензий, если spec не сработает
+          
+          # 🚀 Запускаем сборку (yes | автоматически отвечает на запросы лицензий)
           yes | buildozer -v android debug
-        continue-on-error: false
+        # 👇 Дублируем переменную на уровне шага для надёжности
+        env:
+          BUILDOZER_ALLOW_ROOT: "1"
 
-      # 📦 ШАГ 3: Загрузка результата
       - name: Upload APK
         uses: actions/upload-artifact@v4
         if: success()
