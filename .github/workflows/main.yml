@@ -8,59 +8,38 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container: kivy/buildozer:latest
     
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
     
-    - name: Set up Python 3.10
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
-    
-    - name: Install system dependencies
+    - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y \
-          git zip unzip openjdk-17-jdk \
-          autoconf libtool pkg-config zlib1g-dev \
-          libncurses5-dev libncursesw5-dev \
-          cmake libffi-dev libssl-dev wget curl
+        sudo apt-get install -y git zip unzip
     
-    - name: Set up Java
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-    
-    - name: Install Python dependencies
+    - name: Initialize Buildozer
       run: |
-        python -m pip install --upgrade pip
-        pip install buildozer cython kivy
-    
-    - name: Initialize and Configure Buildozer
-      run: |
-        # 1. Создаем файл конфигурации
         buildozer init
         
-        # 2. Жестко прописываем настройки, чтобы избежать ошибки Aidl
-        # Меняем API на 30
+    - name: Configure Buildozer
+      run: |
+        # Настраиваем buildozer.spec
         sed -i 's/#\?android.api = .*/android.api = 30/' buildozer.spec
-        # Меняем минимальный API на 21
         sed -i 's/#\?android.minapi = .*/android.minapi = 21/' buildozer.spec
-        # ВАЖНО: Явно указываем версию NDK, это часто решает проблему с Aidl
         sed -i 's/#\?android.ndk = .*/android.ndk = 25b/' buildozer.spec
-        # Принимаем лицензии автоматически
         sed -i 's/#\?android.accept_sdk_license.*/android.accept_sdk_license = True/' buildozer.spec
         
-        echo "Settings applied. Current config:"
+        echo "Config:"
         cat buildozer.spec | grep -E "android.api|android.ndk|android.minapi"
-
+    
     - name: Build APK
       run: |
-        # Запускаем сборку
+        # Создаем папку для .buildozer чтобы сохранить кэш
+        mkdir -p .buildozer
         buildozer -v android debug
-      continue-on-error: false 
+      continue-on-error: false
     
     - name: Upload APK
       uses: actions/upload-artifact@v4
