@@ -10,48 +10,53 @@ jobs:
     runs-on: ubuntu-latest
     container: kivy/buildozer:latest
     
-    # Разрешаем работу от Root
+    # Разрешаем работу от имени root (нужно для Docker-образа)
     env:
       BUILDOZER_ALLOW_ROOT: "1"
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    # ОДИН ШАГ ДЛЯ НАСТРОЙКИ И СБОРКИ (чтобы не потерять путь к файлу)
-    - name: Configure and Build
-      run: |
-        # 1. ПРИНУДИТЕЛЬНО переходим в папку с кодом репозитория
-        cd $GITHUB_WORKSPACE
-        
-        echo "Текущая папка: $(pwd)"
-        echo "Файлы в папке:"
-        ls -la
-        
-        # 2. Если нет файла buildozer.spec — создаем его
-        if [ ! -f buildozer.spec ]; then
-          echo "Файл buildozer.spec не найден, создаю..."
-          buildozer init
-        fi
-        
-        # 3. Настраиваем файл (меняем API, NDK, название)
-        sed -i 's/#\?android.api = .*/android.api = 30/' buildozer.spec
-        sed -i 's/#\?android.minapi = .*/android.minapi = 21/' buildozer.spec
-        sed -i 's/#\?android.ndk = .*/android.ndk = 25b/' buildozer.spec
-        sed -i 's/#\?title = .*/title = Shift Calendar/' buildozer.spec
-        
-        echo "Настройки применены:"
-        cat buildozer.spec | grep -E "android.api|android.ndk|android.minapi|title"
-        
-        # 4. Запускаем сборку
-        echo "Начинаю сборку APK..."
-        buildozer -v android debug
-      continue-on-error: false
-    
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      if: success()
-      with:
-        name: shift-calendar-apk
-        path: bin/*.apk
-        if-no-files-found: error
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 🛠 ШАГ 1: Инициализация и настройка buildozer.spec
+      - name: Init & Configure Buildozer
+        run: |
+          # Принудительно переходим в папку с вашим кодом
+          cd $GITHUB_WORKSPACE
+          
+          echo "📂 Текущая папка: $(pwd)"
+          echo "📄 Файлы в папке:"
+          ls -la
+          
+          # Создаём файл, если его нет в репозитории
+          if [ ! -f buildozer.spec ]; then
+            echo "🔧 Файл buildozer.spec не найден, создаю..."
+            buildozer init
+          fi
+          
+          # 🔑 Настраиваем критически важные параметры
+          sed -i 's/^#\?android.api = .*/android.api = 30/' buildozer.spec
+          sed -i 's/^#\?android.minapi = .*/android.minapi = 21/' buildozer.spec
+          sed -i 's/^#\?android.ndk = .*/android.ndk = 25b/' buildozer.spec
+          sed -i 's/^#\?requirements = .*/requirements = python3,kivy/' buildozer.spec
+          sed -i 's/^#\?android.accept_sdk_license.*/android.accept_sdk_license = True/' buildozer.spec
+          
+          echo "✅ Настройки применены:"
+          grep -E "title|android.api|android.minapi|android.ndk|requirements|accept" buildozer.spec
+
+      # 🏗 ШАГ 2: Сборка
+      - name: Build APK
+        run: |
+          cd $GITHUB_WORKSPACE
+          # yes | автоматически отвечает "да" на запрос лицензий, если spec не сработает
+          yes | buildozer -v android debug
+        continue-on-error: false
+
+      # 📦 ШАГ 3: Загрузка результата
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: shift-calendar-apk
+          path: bin/*.apk
+          if-no-files-found: error
