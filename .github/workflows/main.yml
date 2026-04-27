@@ -16,8 +16,6 @@ jobs:
 
       - name: Initialize and Configure Buildozer
         run: |
-          export BUILDOZER_ALLOW_ROOT=1
-
           if [ ! -f buildozer.spec ]; then
             buildozer init
           fi
@@ -27,13 +25,9 @@ jobs:
           sed -i 's/^#\?android.ndk = .*/android.ndk = 25b/' buildozer.spec
           sed -i 's/^#\?android.accept_sdk_license = .*/android.accept_sdk_license = True/' buildozer.spec
 
-          echo "Настройки применены:"
-          grep -E "android.api|android.ndk|android.minapi|android.accept_sdk_license" buildozer.spec
-
       - name: Build APK
         run: |
-          export BUILDOZER_ALLOW_ROOT=1
-          yes | buildozer -v android debug
+          yes y | buildozer -v android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
