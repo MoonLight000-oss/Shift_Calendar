@@ -9,24 +9,49 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container: kivy/buildozer:latest
-
+    
+    # Разрешаем работу от Root
+    env:
+      BUILDOZER_ALLOW_ROOT: "1"
+    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Show files
-        run: |
-          pwd
-          ls -la
-
-      - name: Build APK
-        run: |
-          yes | buildozer -v android debug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        if: success()
-        with:
-          name: shift-calendar-apk
-          path: bin/*.apk
-          if-no-files-found: error
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    # ОДИН ШАГ ДЛЯ НАСТРОЙКИ И СБОРКИ (чтобы не потерять путь к файлу)
+    - name: Configure and Build
+      run: |
+        # 1. ПРИНУДИТЕЛЬНО переходим в папку с кодом репозитория
+        cd $GITHUB_WORKSPACE
+        
+        echo "Текущая папка: $(pwd)"
+        echo "Файлы в папке:"
+        ls -la
+        
+        # 2. Если нет файла buildozer.spec — создаем его
+        if [ ! -f buildozer.spec ]; then
+          echo "Файл buildozer.spec не найден, создаю..."
+          buildozer init
+        fi
+        
+        # 3. Настраиваем файл (меняем API, NDK, название)
+        sed -i 's/#\?android.api = .*/android.api = 30/' buildozer.spec
+        sed -i 's/#\?android.minapi = .*/android.minapi = 21/' buildozer.spec
+        sed -i 's/#\?android.ndk = .*/android.ndk = 25b/' buildozer.spec
+        sed -i 's/#\?title = .*/title = Shift Calendar/' buildozer.spec
+        
+        echo "Настройки применены:"
+        cat buildozer.spec | grep -E "android.api|android.ndk|android.minapi|title"
+        
+        # 4. Запускаем сборку
+        echo "Начинаю сборку APK..."
+        buildozer -v android debug
+      continue-on-error: false
+    
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      if: success()
+      with:
+        name: shift-calendar-apk
+        path: bin/*.apk
+        if-no-files-found: error
