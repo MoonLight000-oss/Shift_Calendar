@@ -9,35 +9,26 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container: kivy/buildozer:latest
-    env:
-      BUILDOZER_ALLOW_ROOT: "1"
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build APK
+      - name: Check buildozer.spec
         run: |
-          export BUILDOZER_ALLOW_ROOT=1
-          cd $GITHUB_WORKSPACE
-          
           if [ ! -f buildozer.spec ]; then
-            buildozer init
+            echo "buildozer.spec not found in repository root"
+            exit 1
           fi
 
-          sed -i 's/^#\?android.api = .*/android.api = 30/' buildozer.spec
-          sed -i 's/^#\?android.minapi = .*/android.minapi = 21/' buildozer.spec
-          sed -i 's/^#\?android.ndk = .*/android.ndk = 25b/' buildozer.spec
-          sed -i 's/^#\?requirements = .*/requirements = python3,kivy/' buildozer.spec
-          sed -i 's/^#\?android.accept_sdk_license.*/android.accept_sdk_license = True/' buildozer.spec
-          
+      - name: Build APK
+        run: |
           yes | buildozer -v android debug
-        env:
-          BUILDOZER_ALLOW_ROOT: "1"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: app-release
+          name: shift-calendar-apk
           path: bin/*.apk
+          if-no-files-found: error
